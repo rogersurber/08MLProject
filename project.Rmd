@@ -1,0 +1,105 @@
+---
+title: "Machine Learning WriteUp"
+author: "Roger Surber"
+date: "Saturday, March 21, 2015"
+output: html_document
+---
+
+###Import Data
+
+```{r echo=TRUE}
+#set working directory
+setwd("C:/Users/roger_000/Brooklyn-Cloud/Education/Data Science/WD")
+#rm(list=ls())
+library(caret)
+
+#import actual data
+training_orig <- read.csv("08 Machine Learning/Project/pml-training.csv", header=TRUE, sep = ",")
+testing_submit_orig <- read.csv("08 Machine Learning/Project/pml-testing.csv", header=TRUE, sep = ",")
+```
+
+
+###Pre-Exclusion of Variables from Predictors
+
+```{r basicremoval}
+#remove columns with NA
+remove_na <- colSums(is.na(training_orig)) == 0
+training_orig_new <- training_orig[ , remove_na]
+
+#remove handselected columns
+remove_handselected <- c('X', 'user_name', 'raw_timestamp_part_1', 
+                        'raw_timestamp_part_2', 'cvtd_timestamp', 
+                        'new_window', 'num_window')
+training_orig_new2 <- training_orig_new[, -which(names(training_orig_new) 
+                                                 %in% remove_handselected)]
+
+#remove columns with derived values
+remove_names <- grep("^kurtosis|^skewness|^max|^min|^amplitude", names(training_orig_new2))
+training_orig_new3 <- training_orig_new2[,-c(remove_names)]
+```
+
+###Split Training and Testing Data
+
+```{r splitsets}
+#split dataset into training and test set
+part <- createDataPartition(training_orig_new3$classe, p = 0.6, list = FALSE)
+train <- training_orig_new3[part,]
+test <- training_orig_new3[-part,]
+dim(train)
+dim(test)
+dim(testing_submit_orig)
+```
+
+
+###Variable Selection
+
+```{r variableselection}
+#Near Zero Variable Check
+nza <- nearZeroVar(train, saveMetrics = TRUE)
+#nza
+#There are no near zero variables left after the pre-exclusion of variables
+```
+
+
+###Train Model
+
+```{r trainmodelRF}
+modelRF <- train(classe ~ ., data = train, method = "rf", ntree = 60)
+
+```
+
+
+###importance of Variables
+
+```{r importanceOfVariables}
+varImp(modelRF, useModel=0)
+```
+
+
+###Evaluation of Model
+
+```{r evaluation}
+#evaluation of Model RF
+modelRF$finalModel
+#evaluation of Model RPART
+#modelRPART$finalModel
+
+#use model rf
+modelRFPrediction = predict(modelRF, test)
+predictionMatrix = with(test, table(modelRFPrediction, classe))
+matrixDiagonal <- sum(diag(predictionMatrix))
+matrixTotal <- sum(as.vector(predictionMatrix))
+OOB_test <- (matrixTotal - matrixDiagonal)/matrixTotal
+OOB_test
+```
+
+
+### Conclusion
+
+```{r conclusion}
+solutionRF <- predict(modelRF, testing_submit_orig)
+solutionRF
+```
+
+
+
