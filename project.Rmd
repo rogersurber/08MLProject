@@ -12,9 +12,13 @@ output: html_document
 setwd("C:/Users/roger_000/Brooklyn-Cloud/Education/Data Science/WD")
 #rm(list=ls())
 library(caret)
+set.seed(444)
 
-#import actual data
+#import of actual data (later split into TRAIN SET and TEST SET)
 training_orig <- read.csv("08 Machine Learning/Project/pml-training.csv", header=TRUE, sep = ",")
+dim(training_orig)
+
+#Import of SUBMIT SET
 testing_submit_orig <- read.csv("08 Machine Learning/Project/pml-testing.csv", header=TRUE, sep = ",")
 ```
 
@@ -22,29 +26,39 @@ testing_submit_orig <- read.csv("08 Machine Learning/Project/pml-testing.csv", h
 ###Pre-Exclusion of Variables from Predictors
 
 ```{r basicremoval}
-#remove columns with NA
+#Remove columns with NA
 remove_na <- colSums(is.na(training_orig)) == 0
 training_orig_new <- training_orig[ , remove_na]
+dim(training_orig_new)
 
-#remove handselected columns
+#Remove handselected columns
 remove_handselected <- c('X', 'user_name', 'raw_timestamp_part_1', 
                         'raw_timestamp_part_2', 'cvtd_timestamp', 
                         'new_window', 'num_window')
 training_orig_new2 <- training_orig_new[, -which(names(training_orig_new) 
                                                  %in% remove_handselected)]
+dim(training_orig_new2)
 
-#remove columns with derived values
+#Remove columns with derived values
 remove_names <- grep("^kurtosis|^skewness|^max|^min|^amplitude", names(training_orig_new2))
 training_orig_new3 <- training_orig_new2[,-c(remove_names)]
+dim(training_orig_new3)
 ```
+
 
 ###Split Training and Testing Data
 
 ```{r splitsets}
-#split dataset into training and test set
+#Split dataset into TRAIN SET and TEST SET
 part <- createDataPartition(training_orig_new3$classe, p = 0.6, list = FALSE)
+
+#Creation of TRAIN SET
 train <- training_orig_new3[part,]
+
+#Creation of TEST SET
 test <- training_orig_new3[-part,]
+
+#Dimensions of TRAIN SET, TEST SET, SUBMIT SET
 dim(train)
 dim(test)
 dim(testing_submit_orig)
@@ -55,46 +69,62 @@ dim(testing_submit_orig)
 
 ```{r variableselection}
 #Near Zero Variable Check
-nza <- nearZeroVar(train, saveMetrics = TRUE)
-#nza
-#There are no near zero variables left after the pre-exclusion of variables
+nz <- nearZeroVar(train, saveMetrics = TRUE)
+nz
+#There are no near zero variables left after the pre-exclusion of variables. All show FALSE nzv.
 ```
 
 
 ###Train Model
 
 ```{r trainmodelRF}
-modelRF <- train(classe ~ ., data = train, method = "rf", ntree = 60)
-
+#Training the random forest model with number of trees equals 80
+modelRF <- train(classe ~ ., data = train, method = "rf", ntree = 80)
 ```
 
 
 ###importance of Variables
 
+This shows the importance of variables for the trained modelRF
+
 ```{r importanceOfVariables}
 varImp(modelRF, useModel=0)
+#varImpPlot(modelRF$finalModel)
 ```
 
 
 ###Evaluation of Model
 
 ```{r evaluation}
-#evaluation of Model RF
+#Evaluation of Model RF gives us an OOB estimate of error rate of 1.02%
 modelRF$finalModel
-#evaluation of Model RPART
-#modelRPART$finalModel
 
-#use model rf
+#Use model random forrest to predict on the TEST SET as Cross Validation (60% train data, 40% test data)
 modelRFPrediction = predict(modelRF, test)
 predictionMatrix = with(test, table(modelRFPrediction, classe))
+
+#Get the sum of the diagonal (correct answers)
 matrixDiagonal <- sum(diag(predictionMatrix))
+matrixDiagonal
+
+#Get the sum of all the answers (total answers)
 matrixTotal <- sum(as.vector(predictionMatrix))
-OOB_test <- (matrixTotal - matrixDiagonal)/matrixTotal
+matrixTotal
+
+#Wrong predictions
+matrixDifference <- matrixTotal - matrixDiagonal
+matrixDifference
+
+#ratio of the difference / the total gives the error rate on the test set
+OOB_test <- matrixDifference/matrixTotal
+#Error rate of the prediction Model on the TEST SET:
 OOB_test
 ```
 
 
 ### Conclusion
+
+The Model used to predict the test examples to submit, predict the the following different ways of lifting the barbells:
 
 ```{r conclusion}
 solutionRF <- predict(modelRF, testing_submit_orig)

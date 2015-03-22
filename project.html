@@ -75,33 +75,48 @@ setwd(&quot;C:/Users/roger_000/Brooklyn-Cloud/Education/Data Science/WD&quot;)
 library(caret)</code></pre>
 <pre><code>## Loading required package: lattice
 ## Loading required package: ggplot2</code></pre>
-<pre class="r"><code>#import actual data
+<pre class="r"><code>set.seed(444)
+
+#import of actual data (later split into TRAIN SET and TEST SET)
 training_orig &lt;- read.csv(&quot;08 Machine Learning/Project/pml-training.csv&quot;, header=TRUE, sep = &quot;,&quot;)
+dim(training_orig)</code></pre>
+<pre><code>## [1] 19622   160</code></pre>
+<pre class="r"><code>#Import of SUBMIT SET
 testing_submit_orig &lt;- read.csv(&quot;08 Machine Learning/Project/pml-testing.csv&quot;, header=TRUE, sep = &quot;,&quot;)</code></pre>
 </div>
 <div id="pre-exclusion-of-variables-from-predictors" class="section level3">
 <h3>Pre-Exclusion of Variables from Predictors</h3>
-<pre class="r"><code>#remove columns with NA
+<pre class="r"><code>#Remove columns with NA
 remove_na &lt;- colSums(is.na(training_orig)) == 0
 training_orig_new &lt;- training_orig[ , remove_na]
-
-#remove handselected columns
+dim(training_orig_new)</code></pre>
+<pre><code>## [1] 19622    93</code></pre>
+<pre class="r"><code>#Remove handselected columns
 remove_handselected &lt;- c('X', 'user_name', 'raw_timestamp_part_1', 
                         'raw_timestamp_part_2', 'cvtd_timestamp', 
                         'new_window', 'num_window')
 training_orig_new2 &lt;- training_orig_new[, -which(names(training_orig_new) 
                                                  %in% remove_handselected)]
-
-#remove columns with derived values
+dim(training_orig_new2)</code></pre>
+<pre><code>## [1] 19622    86</code></pre>
+<pre class="r"><code>#Remove columns with derived values
 remove_names &lt;- grep(&quot;^kurtosis|^skewness|^max|^min|^amplitude&quot;, names(training_orig_new2))
-training_orig_new3 &lt;- training_orig_new2[,-c(remove_names)]</code></pre>
+training_orig_new3 &lt;- training_orig_new2[,-c(remove_names)]
+dim(training_orig_new3)</code></pre>
+<pre><code>## [1] 19622    53</code></pre>
 </div>
 <div id="split-training-and-testing-data" class="section level3">
 <h3>Split Training and Testing Data</h3>
-<pre class="r"><code>#split dataset into training and test set
+<pre class="r"><code>#Split dataset into TRAIN SET and TEST SET
 part &lt;- createDataPartition(training_orig_new3$classe, p = 0.6, list = FALSE)
+
+#Creation of TRAIN SET
 train &lt;- training_orig_new3[part,]
+
+#Creation of TEST SET
 test &lt;- training_orig_new3[-part,]
+
+#Dimensions of TRAIN SET, TEST SET, SUBMIT SET
 dim(train)</code></pre>
 <pre><code>## [1] 11776    53</code></pre>
 <pre class="r"><code>dim(test)</code></pre>
@@ -112,13 +127,68 @@ dim(train)</code></pre>
 <div id="variable-selection" class="section level3">
 <h3>Variable Selection</h3>
 <pre class="r"><code>#Near Zero Variable Check
-nza &lt;- nearZeroVar(train, saveMetrics = TRUE)
-#nza
-#There are no near zero variables left after the pre-exclusion of variables</code></pre>
+nz &lt;- nearZeroVar(train, saveMetrics = TRUE)
+nz</code></pre>
+<pre><code>##                      freqRatio percentUnique zeroVar   nzv
+## roll_belt                1.071       8.72962   FALSE FALSE
+## pitch_belt               1.130      13.82473   FALSE FALSE
+## yaw_belt                 1.048      14.66542   FALSE FALSE
+## total_accel_belt         1.041       0.24626   FALSE FALSE
+## gyros_belt_x             1.034       1.06997   FALSE FALSE
+## gyros_belt_y             1.107       0.54348   FALSE FALSE
+## gyros_belt_z             1.083       1.36719   FALSE FALSE
+## accel_belt_x             1.025       1.31624   FALSE FALSE
+## accel_belt_y             1.171       1.13791   FALSE FALSE
+## accel_belt_z             1.099       2.42867   FALSE FALSE
+## magnet_belt_x            1.018       2.49660   FALSE FALSE
+## magnet_belt_y            1.089       2.41168   FALSE FALSE
+## magnet_belt_z            1.021       3.56658   FALSE FALSE
+## roll_arm                44.956      19.63315   FALSE FALSE
+## pitch_arm               87.957      22.58832   FALSE FALSE
+## yaw_arm                 28.493      21.62024   FALSE FALSE
+## total_accel_arm          1.015       0.55197   FALSE FALSE
+## gyros_arm_x              1.033       5.24796   FALSE FALSE
+## gyros_arm_y              1.489       3.03159   FALSE FALSE
+## gyros_arm_z              1.137       1.96162   FALSE FALSE
+## accel_arm_x              1.029       6.39436   FALSE FALSE
+## accel_arm_y              1.271       4.41576   FALSE FALSE
+## accel_arm_z              1.000       6.39436   FALSE FALSE
+## magnet_arm_x             1.000      11.16678   FALSE FALSE
+## magnet_arm_y             1.184       7.20109   FALSE FALSE
+## magnet_arm_z             1.043      10.55537   FALSE FALSE
+## roll_dumbbell            1.243      86.95652   FALSE FALSE
+## pitch_dumbbell           2.130      84.95245   FALSE FALSE
+## yaw_dumbbell             1.243      86.62534   FALSE FALSE
+## total_accel_dumbbell     1.076       0.34817   FALSE FALSE
+## gyros_dumbbell_x         1.056       1.96162   FALSE FALSE
+## gyros_dumbbell_y         1.221       2.23336   FALSE FALSE
+## gyros_dumbbell_z         1.101       1.63893   FALSE FALSE
+## accel_dumbbell_x         1.000       3.37126   FALSE FALSE
+## accel_dumbbell_y         1.092       3.82133   FALSE FALSE
+## accel_dumbbell_z         1.081       3.38825   FALSE FALSE
+## magnet_dumbbell_x        1.180       8.82303   FALSE FALSE
+## magnet_dumbbell_y        1.415       6.86990   FALSE FALSE
+## magnet_dumbbell_z        1.008       5.57914   FALSE FALSE
+## roll_forearm            11.446      14.77582   FALSE FALSE
+## pitch_forearm           55.595      21.06827   FALSE FALSE
+## yaw_forearm             16.671      14.21535   FALSE FALSE
+## total_accel_forearm      1.188       0.57745   FALSE FALSE
+## gyros_forearm_x          1.028       2.30129   FALSE FALSE
+## gyros_forearm_y          1.035       6.02921   FALSE FALSE
+## gyros_forearm_z          1.027       2.36073   FALSE FALSE
+## accel_forearm_x          1.189       6.60666   FALSE FALSE
+## accel_forearm_y          1.203       8.15217   FALSE FALSE
+## accel_forearm_z          1.021       4.61957   FALSE FALSE
+## magnet_forearm_x         1.040      12.11787   FALSE FALSE
+## magnet_forearm_y         1.071      15.28533   FALSE FALSE
+## magnet_forearm_z         1.105      13.49355   FALSE FALSE
+## classe                   1.469       0.04246   FALSE FALSE</code></pre>
+<pre class="r"><code>#There are no near zero variables left after the pre-exclusion of variables. All show FALSE nzv.</code></pre>
 </div>
 <div id="train-model" class="section level3">
 <h3>Train Model</h3>
-<pre class="r"><code>modelRF &lt;- train(classe ~ ., data = train, method = &quot;rf&quot;, ntree = 60)</code></pre>
+<pre class="r"><code>#Training the random forest model with number of trees equals 80
+modelRF &lt;- train(classe ~ ., data = train, method = &quot;rf&quot;, ntree = 80)</code></pre>
 <pre><code>## Loading required package: randomForest</code></pre>
 <pre><code>## Warning: package 'randomForest' was built under R version 3.1.3</code></pre>
 <pre><code>## randomForest 4.6-10
@@ -126,6 +196,7 @@ nza &lt;- nearZeroVar(train, saveMetrics = TRUE)
 </div>
 <div id="importance-of-variables" class="section level3">
 <h3>importance of Variables</h3>
+<p>This shows the importance of variables for the trained modelRF</p>
 <pre class="r"><code>varImp(modelRF, useModel=0)</code></pre>
 <pre><code>## Loading required package: pROC</code></pre>
 <pre><code>## Warning: package 'pROC' was built under R version 3.1.3</code></pre>
@@ -142,60 +213,72 @@ nza &lt;- nearZeroVar(train, saveMetrics = TRUE)
 ##   only 20 most important variables shown (out of 52)
 ## 
 ##                       A    B    C     D    E
-## pitch_forearm     100.0 63.6 71.1 100.0 69.3
-## roll_dumbbell      50.4 64.2 84.7  84.7 60.3
-## accel_forearm_x    81.9 51.8 65.3  81.9 48.6
-## magnet_arm_x       77.7 53.1 55.2  77.7 65.3
-## magnet_arm_y       76.4 40.7 52.8  76.4 68.8
-## accel_arm_x        73.3 50.8 46.9  73.3 62.4
-## magnet_forearm_x   72.8 50.8 40.1  72.8 44.3
-## pitch_dumbbell     54.5 71.0 71.0  62.6 47.6
-## magnet_dumbbell_x  68.5 68.5 65.5  50.9 54.2
-## magnet_dumbbell_y  48.8 67.4 67.4  48.3 55.6
-## magnet_belt_y      67.1 58.4 59.5  61.5 67.1
-## accel_dumbbell_x   60.2 60.2 58.6  50.7 43.4
-## magnet_dumbbell_z  58.1 25.5 58.1  38.1 54.9
-## magnet_arm_z       52.1 52.1 36.6  40.3 49.4
-## magnet_belt_z      50.5 48.2 47.2  50.8 50.8
-## pitch_arm          50.5 25.7 39.0  41.7 50.5
-## roll_belt          44.9 39.1 41.9  46.6 46.6
-## accel_dumbbell_z   45.9 45.9 41.3  23.2 33.2
-## magnet_forearm_y   38.3 22.4 44.6  44.6 35.2
-## yaw_dumbbell       22.8 42.6 42.6  20.3 28.8</code></pre>
+## pitch_forearm     100.0 63.1 72.2 100.0 69.0
+## accel_forearm_x    83.0 53.2 64.5  83.0 51.2
+## roll_dumbbell      51.3 60.2 82.4  82.4 56.0
+## magnet_arm_x       78.4 53.9 54.8  78.4 66.4
+## magnet_arm_y       77.2 39.1 54.2  77.2 67.6
+## accel_arm_x        74.0 52.8 48.0  74.0 63.2
+## pitch_dumbbell     51.5 72.5 72.5  65.0 50.0
+## magnet_forearm_x   71.8 52.6 39.4  71.8 43.8
+## magnet_belt_y      66.8 59.2 61.8  59.5 66.8
+## magnet_dumbbell_x  64.9 65.4 65.4  52.1 54.5
+## magnet_dumbbell_y  45.8 63.9 63.9  48.8 50.2
+## accel_dumbbell_x   56.6 59.8 59.8  51.9 41.7
+## magnet_dumbbell_z  59.2 26.0 59.2  39.2 56.5
+## magnet_arm_z       53.6 53.6 38.7  42.4 50.8
+## magnet_belt_z      51.8 49.3 49.7  49.4 51.8
+## pitch_arm          50.6 29.6 38.7  44.8 50.6
+## yaw_dumbbell       23.1 45.0 45.0  23.0 33.7
+## magnet_forearm_y   40.4 24.4 44.8  44.8 33.8
+## roll_belt          42.1 37.9 39.7  44.6 44.6
+## accel_dumbbell_z   44.3 44.3 43.4  22.6 33.6</code></pre>
+<pre class="r"><code>#varImpPlot(modelRF$finalModel)</code></pre>
 </div>
 <div id="evaluation-of-model" class="section level3">
 <h3>Evaluation of Model</h3>
-<pre class="r"><code>#evaluation of Model RF
+<pre class="r"><code>#Evaluation of Model RF gives us an OOB estimate of error rate of 1.02%
 modelRF$finalModel</code></pre>
 <pre><code>## 
 ## Call:
-##  randomForest(x = x, y = y, ntree = 60, mtry = param$mtry) 
+##  randomForest(x = x, y = y, ntree = 80, mtry = param$mtry) 
 ##                Type of random forest: classification
-##                      Number of trees: 60
+##                      Number of trees: 80
 ## No. of variables tried at each split: 27
 ## 
-##         OOB estimate of  error rate: 0.98%
+##         OOB estimate of  error rate: 1.02%
 ## Confusion matrix:
 ##      A    B    C    D    E class.error
-## A 3332   11    4    0    1    0.004779
-## B   25 2240   12    2    0    0.017113
-## C    0    7 2036   11    0    0.008763
-## D    1    1   26 1901    1    0.015026
-## E    0    3    5    5 2152    0.006005</code></pre>
-<pre class="r"><code>#evaluation of Model RPART
-#modelRPART$finalModel
-
-#use model rf
+## A 3338    5    2    2    1    0.002987
+## B   23 2247    8    1    0    0.014041
+## C    0   15 2022   17    0    0.015579
+## D    0    1   29 1898    2    0.016580
+## E    1    2    4    7 2151    0.006467</code></pre>
+<pre class="r"><code>#Use model random forrest to predict on the TEST SET as Cross Validation (60% train data, 40% test data)
 modelRFPrediction = predict(modelRF, test)
 predictionMatrix = with(test, table(modelRFPrediction, classe))
+
+#Get the sum of the diagonal (correct answers)
 matrixDiagonal &lt;- sum(diag(predictionMatrix))
+matrixDiagonal</code></pre>
+<pre><code>## [1] 7768</code></pre>
+<pre class="r"><code>#Get the sum of all the answers (total answers)
 matrixTotal &lt;- sum(as.vector(predictionMatrix))
-OOB_test &lt;- (matrixTotal - matrixDiagonal)/matrixTotal
+matrixTotal</code></pre>
+<pre><code>## [1] 7846</code></pre>
+<pre class="r"><code>#Wrong predictions
+matrixDifference &lt;- matrixTotal - matrixDiagonal
+matrixDifference</code></pre>
+<pre><code>## [1] 78</code></pre>
+<pre class="r"><code>#ratio of the difference / the total gives the error rate on the test set
+OOB_test &lt;- matrixDifference/matrixTotal
+#Error rate of the prediction Model on the TEST SET:
 OOB_test</code></pre>
-<pre><code>## [1] 0.009177</code></pre>
+<pre><code>## [1] 0.009941</code></pre>
 </div>
 <div id="conclusion" class="section level3">
 <h3>Conclusion</h3>
+<p>The Model used to predict the test examples to submit, predict the the following different ways of lifting the barbells:</p>
 <pre class="r"><code>solutionRF &lt;- predict(modelRF, testing_submit_orig)
 solutionRF</code></pre>
 <pre><code>##  [1] B A B A A E D B A A B C B A E E A B B B
